@@ -13,7 +13,7 @@ import java.util.function.Predicate;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector2i;
 import org.joml.Vector2ic;
-
+import org.joml.Vector2d;
 import com.buaisociety.pacman.entity.Direction;
 import com.buaisociety.pacman.entity.FruitEntity;
 
