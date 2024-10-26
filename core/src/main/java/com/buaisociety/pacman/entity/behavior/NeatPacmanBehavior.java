@@ -9,10 +9,14 @@ import com.buaisociety.pacman.sprite.DebugDrawing;
 import com.cjcrafter.neat.Client;
 import com.buaisociety.pacman.entity.Direction;
 import com.buaisociety.pacman.entity.Entity;
+import com.buaisociety.pacman.entity.GhostEntity;
+import com.buaisociety.pacman.entity.GhostState;
 import com.buaisociety.pacman.entity.PacmanEntity;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import java.util.Map;
+import com.buaisociety.pacman.maze.Pair;
+import java.util.Optional;
 
 public class NeatPacmanBehavior implements Behavior {
 
@@ -25,7 +29,7 @@ public class NeatPacmanBehavior implements Behavior {
     private int scoreModifier = 0;
     private int lastScore = 0; // Add this line to declare lastScore
     private int numberUpdatesSinceLastScore = 0; // Add this line to declare numberUpdatesSinceLastScore
-
+    Direction newDirection;
 
     public NeatPacmanBehavior(@NotNull Client client) {
         this.client = client;
@@ -44,6 +48,14 @@ public class NeatPacmanBehavior implements Behavior {
             pacman = (PacmanEntity) entity;
         }
 
+        //check if ghost is nearby
+        Pair<Boolean, Direction> ghostInfo = Searcher.isGhostNearby(pacman, 4.0); // Check within a distance of 4.0
+        boolean ghostNearby = ghostInfo.getKey();
+        Direction ghostDirection = ghostInfo.getValue();
+
+
+        
+
         // SPECIAL TRAINING CONDITIONS
         int newScore = pacman.getMaze().getLevelManager().getScore();
         if (newScore > lastScore) {
@@ -58,6 +70,29 @@ public class NeatPacmanBehavior implements Behavior {
         }
         if (numberUpdatesSinceLastScore > 10 * 10){
             scoreModifier -= 1;
+        }
+
+        if (ghostNearby) {
+            // If the ghost is frightened, move towards it; otherwise, move away
+            Optional<GhostEntity> frightenedGhost = pacman.getMaze().getEntities().stream()
+                .filter(e -> e instanceof GhostEntity)
+                .map(e -> (GhostEntity) e) // Cast to GhostEntity
+                .filter(ghost -> ghost.getState() == GhostState.FRIGHTENED)
+                .findFirst();
+            if (frightenedGhost.isPresent()) {
+                // Move towards the frightened ghost
+                Direction directionTowardsGhost = Searcher.getDirectionTo(pacman.getPosition(), frightenedGhost.get().getPosition());
+                newDirection = directionTowardsGhost; // Update newDirection to move towards the frightened ghost
+            } else {
+                // Move away from the ghost
+                newDirection = Searcher.getDirectionAway(pacman.getPosition(), pacman.getMaze().getEntities().stream()
+                    .filter(e -> e instanceof GhostEntity)
+                    .map(e -> (GhostEntity) e) // Cast to GhostEntity
+                    .filter(ghost -> ghost.getState() == GhostState.CHASE) // Change to NORMAL state
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("No normal ghost found"))
+                    .getPosition());
+            }
         }
 
 
@@ -119,7 +154,7 @@ public class NeatPacmanBehavior implements Behavior {
             }
         }
 
-        Direction newDirection = closestDirection != null ? closestDirection : switch (index) {
+        newDirection = closestDirection != null ? closestDirection : switch (index) {
             case 0 -> pacman.getDirection();
             case 1 -> pacman.getDirection().left();
             case 2 -> pacman.getDirection().right();

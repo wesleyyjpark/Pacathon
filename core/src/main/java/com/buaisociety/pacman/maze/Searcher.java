@@ -19,6 +19,12 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.Map;
 
+import com.buaisociety.pacman.entity.PacmanEntity;
+import com.buaisociety.pacman.entity.GhostEntity;
+import com.buaisociety.pacman.entity.GhostState;
+import com.buaisociety.pacman.entity.Entity;
+import com.buaisociety.pacman.maze.Pair;
+
 public class Searcher {
 
     /**
@@ -85,7 +91,7 @@ public class Searcher {
      * @param direction The initial direction for the search.
      * @return The SearchResult containing the tile, distance, and direction, or null if no matching tile is found.
      */
-    private static SearchResult findTileWithBFS(@NotNull Tile startTile, @NotNull Predicate<Tile> predicate, @NotNull Direction direction) {
+    public static SearchResult findTileWithBFS(@NotNull Tile startTile, @NotNull Predicate<Tile> predicate, @NotNull Direction direction) {
         Queue<Vector2ic> queue = new ArrayDeque<>();
         Set<Vector2ic> visited = new HashSet<>();
         Queue<Integer> distances = new ArrayDeque<>();
@@ -126,7 +132,7 @@ public class Searcher {
      * @param direction The direction for the offset.
      * @return The vector offset for moving in that direction.
      */
-    private static Vector2i getDirectionOffset(Direction direction) {
+    public static Vector2i getDirectionOffset(Direction direction) {
         return switch (direction) {
             case UP -> new Vector2i(0, 1);
             case DOWN -> new Vector2i(0, -1);
@@ -142,10 +148,104 @@ public class Searcher {
      * @param direction The primary direction for the search.
      * @return A list of neighboring tile positions limited to the specified direction.
      */
-    private static List<Vector2i> getNeighborsInDirection(Vector2i position, Direction direction) {
+    public static List<Vector2i> getNeighborsInDirection(Vector2i position, Direction direction) {
         List<Vector2i> neighbors = new ArrayList<>();
         Vector2i offset = getDirectionOffset(direction);
         neighbors.add(new Vector2i(position.x + offset.x, position.y + offset.y));
         return neighbors;
     }
+
+    /**
+     * Checks if there are any ghosts nearby within a certain distance.
+     * If power pellets are eaten (indicated by score increase), ghosts will be scared and move towards them.
+     *
+     * @param pacman The PacmanEntity to check against.
+     * @param distance The maximum distance to check for ghosts.
+     * @return A pair containing a boolean indicating if a ghost is nearby and the direction towards or away from the ghost.
+     */
+    public static Pair<Boolean, Direction> isGhostNearby(PacmanEntity pacman, double distance) {
+        Maze maze = pacman.getMaze();
+        int currentScore = maze.getLevelManager().getScore(); // Get the current score
+
+        // Temporary variable to store the previous score
+        int previousScore = currentScore; // Store the current score as previous for the next check
+
+        // Check if the score has increased by 50
+        boolean hasEatenPowerPellet = (currentScore - previousScore) >= 50;
+
+        GhostEntity nearestGhost = findNearestGhost(pacman);
+        if (nearestGhost != null) {
+            double ghostDistance = nearestGhost.getPosition().distance(pacman.getPosition());
+            if (ghostDistance <= distance) {
+                // If Pacman has eaten a power pellet, return direction towards the ghost
+                if (hasEatenPowerPellet && nearestGhost.getState() == GhostState.FRIGHTENED) {
+                    return new Pair<>(true, getDirectionTo(pacman.getPosition(), nearestGhost.getPosition()));
+                } else if (nearestGhost.getState() != GhostState.FRIGHTENED) {
+                    // Return direction away from the ghost
+                    return new Pair<>(true, getDirectionAway(pacman.getPosition(), nearestGhost.getPosition()));
+                }
+            }
+        }
+        return new Pair<>(false, null); // No ghosts nearby
+    }
+
+    /**
+     * Finds the nearest ghost to Pacman.
+     *
+     * @param pacman The PacmanEntity to check against.
+     * @return The nearest GhostEntity, or null if no ghosts are present.
+     */
+    public static GhostEntity findNearestGhost(PacmanEntity pacman) {
+        Maze maze = pacman.getMaze();
+        GhostEntity nearestGhost = null;
+        double closestDistance = Double.MAX_VALUE;
+
+        for (Entity entity : maze.getEntities()) {
+            if (entity instanceof GhostEntity ghost) {
+                double distance = ghost.getPosition().distance(pacman.getPosition());
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    nearestGhost = ghost;
+                }
+            }
+        }
+        return nearestGhost;
+    }
+
+    /**
+     * Gets the direction towards a target position.
+     *
+     * @param pacmanPosition The position of Pacman.
+     * @param targetPosition The position of the target (ghost).
+     * @return The direction towards the target.
+     */
+    public static Direction getDirectionTo(Vector2d pacmanPosition, Vector2d targetPosition) {
+        double dx = targetPosition.x() - pacmanPosition.x();
+        double dy = targetPosition.y() - pacmanPosition.y();
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+            return dx > 0 ? Direction.RIGHT : Direction.LEFT;
+        } else {
+            return dy > 0 ? Direction.UP : Direction.DOWN;
+        }
+    }
+
+    /**
+     * Gets the direction away from a target position.
+     *
+     * @param pacmanPosition The position of Pacman.
+     * @param targetPosition The position of the target (ghost).
+     * @return The direction away from the target.
+     */
+    public static Direction getDirectionAway(Vector2d pacmanPosition, Vector2d targetPosition) {
+        double dx = pacmanPosition.x() - targetPosition.x();
+        double dy = pacmanPosition.y() - targetPosition.y();
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+            return dx > 0 ? Direction.LEFT : Direction.RIGHT;
+        } else {
+            return dy > 0 ? Direction.DOWN : Direction.UP;
+        }
+    }
+
 }

@@ -30,7 +30,7 @@ public final class SpecialTrainingConditions {
         return event -> {
             // Prevent ghosts from spawning during training
             if (event.getEntityType() == EntityType.GHOST) {
-                event.setCancelled(true);
+                event.setCancelled(false);
             }
         };
     }
