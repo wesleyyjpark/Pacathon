@@ -22,15 +22,17 @@ import java.util.Map;
 public class Searcher {
 
     /**
-     * Stores the result of the BFS search, including the found tile and the distance from the start tile.
+     * Stores the result of the BFS search, including the found tile, the distance from the start tile, and the direction.
      */
     public static class SearchResult {
         private final Tile tile;
         private final int distance;
+        private final Direction direction; // Add direction field
 
-        public SearchResult(Tile tile, int distance) {
+        public SearchResult(Tile tile, int distance, Direction direction) { // Update constructor
             this.tile = tile;
             this.distance = distance;
+            this.direction = direction; // Set direction
         }
 
         public Tile getTile() {
@@ -39,6 +41,10 @@ public class Searcher {
 
         public int getDistance() {
             return distance;
+        }
+
+        public Direction getDirection() { // Add getter for direction
+            return direction;
         }
     }
 
@@ -51,12 +57,21 @@ public class Searcher {
      */
     public static Map<Direction, SearchResult> findTileInAllDirections(@NotNull Tile startTile, @NotNull Predicate<Tile> predicate) {
         Map<Direction, SearchResult> results = new EnumMap<>(Direction.class);
+        SearchResult closestResult = null; // Track the closest result overall
 
         for (Direction direction : Direction.values()) {
             SearchResult result = findTileWithBFS(startTile, predicate, direction);
             if (result != null) {
-                results.put(direction, result);
+                // Update closest result if it's the first found or closer than the previous
+                if (closestResult == null || result.getDistance() < closestResult.getDistance()) {
+                    closestResult = result;
+                }
             }
+        }
+
+        // Only return the closest result if found
+        if (closestResult != null) {
+            results.put(closestResult.getDirection(), closestResult); // Use the new direction field
         }
 
         return results;
@@ -68,7 +83,7 @@ public class Searcher {
      * @param startTile The starting tile for the BFS.
      * @param predicate The predicate to test each tile.
      * @param direction The initial direction for the search.
-     * @return The SearchResult containing the tile and distance, or null if no matching tile is found.
+     * @return The SearchResult containing the tile, distance, and direction, or null if no matching tile is found.
      */
     private static SearchResult findTileWithBFS(@NotNull Tile startTile, @NotNull Predicate<Tile> predicate, @NotNull Direction direction) {
         Queue<Vector2ic> queue = new ArrayDeque<>();
@@ -86,7 +101,7 @@ public class Searcher {
             Tile currentTile = startTile.getMaze().getTile(new Vector2i(currentPos));
 
             if (predicate.test(currentTile)) {
-                return new SearchResult(currentTile, currentDistance);
+                return new SearchResult(currentTile, currentDistance, direction); // Return direction
             }
 
             // Enqueue neighboring tiles only in the initial search direction

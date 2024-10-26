@@ -125,7 +125,7 @@ public class Main extends ApplicationAdapter {
             neatParameters.setTargetClientsPerSpecies(12);  // targeting ~12 clients per species
             neatParameters.setStagnationLimit(10);  // lower stagnation limit
             neatParameters.setUseBiasNode(true);  // use bias node
-            return new NeatImpl(8, 4, totalGames, neatParameters);
+            return new NeatImpl(5, 4, totalGames, neatParameters);
         }
     }
 

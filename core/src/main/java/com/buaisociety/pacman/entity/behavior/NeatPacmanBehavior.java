@@ -48,6 +48,7 @@ public class NeatPacmanBehavior implements Behavior {
         int newScore = pacman.getMaze().getLevelManager().getScore();
         if (newScore > lastScore) {
             lastScore = newScore;
+            scoreModifier += 10;
             numberUpdatesSinceLastScore = 0;
         }
 
@@ -55,6 +56,10 @@ public class NeatPacmanBehavior implements Behavior {
             pacman.kill();
             return Direction.UP;
         }
+        if (numberUpdatesSinceLastScore > 10 * 10){
+            scoreModifier -= 1;
+        }
+
 
         // TODO: Make changes here to help with your training...
         // END OF SPECIAL TRAINING CONDITIONS
@@ -71,38 +76,39 @@ public class NeatPacmanBehavior implements Behavior {
         boolean canMoveRight = pacman.canMove(right);
         boolean canMoveBehind = pacman.canMove(behind);
 
-        
-
-        
-
-       
 
         //BFS 
         Tile currentTile = pacman.getMaze().getTile(pacman.getTilePosition());
         Map<Direction, Searcher.SearchResult> nearestPellets = Searcher.findTileInAllDirections(currentTile, tile -> tile.getState() == TileState.PELLET);
 
-        int maxDistance = -1;
-        for (Searcher.SearchResult result : nearestPellets.values()) {
-            if (result != null) {
-                maxDistance = Math.max(maxDistance, result.getDistance());
+        // Determine the direction with the closest pellet
+        Direction closestDirection = null;
+        int closestDistance = Integer.MAX_VALUE;
+
+        for (Map.Entry<Direction, Searcher.SearchResult> entry : nearestPellets.entrySet()) {
+            Searcher.SearchResult result = entry.getValue();
+            if (result != null && result.getDistance() < closestDistance) {
+                closestDistance = result.getDistance();
+                closestDirection = entry.getKey();
             }
         }
 
-        float nearestPelletForward = nearestPellets.get(forward) != null ? 1 - (float) nearestPellets.get(forward).getDistance() / maxDistance : 0;
-        float nearestPelletLeft = nearestPellets.get(left) != null ? 1 - (float) nearestPellets.get(left).getDistance() / maxDistance : 0;
-        float nearestPelletRight = nearestPellets.get(right) != null ? 1 - (float) nearestPellets.get(right).getDistance() / maxDistance : 0;
-        float nearestPelletBehind = nearestPellets.get(behind) != null ? 1 - (float) nearestPellets.get(behind).getDistance() / maxDistance : 0;
+        float[] inputs = new float[5]; // Adjust size based on the number of inputs
+        inputs[0] = canMoveForward ? 1f : 0f; // Forward
+        inputs[1] = canMoveLeft ? 1f : 0f;    // Left
+        inputs[2] = canMoveRight ? 1f : 0f;   // Right
+        inputs[3] = canMoveBehind ? 1f : 0f;  // Behind
+        inputs[4] = closestDirection != null ? switch (closestDirection) {
+            case UP -> 1f;    // Closest direction is UP
+            case LEFT -> 2f;  // Closest direction is LEFT
+            case RIGHT -> 3f; // Closest direction is RIGHT
+            case DOWN -> 4f;  // Closest direction is DOWN
+        } : 0f;
+        
 
-        float[] outputs = client.getCalculator().calculate(new float[]{
-            canMoveForward ? 1f : 0f,
-            canMoveLeft ? 1f : 0f,
-            canMoveRight ? 1f : 0f,
-            canMoveBehind ? 1f : 0f,
-            nearestPelletForward,
-            nearestPelletLeft,
-            nearestPelletRight,
-            nearestPelletBehind
-        }).join();
+        // Use the closest direction for the output
+        float[] outputs = client.getCalculator().calculate(inputs).join();
+
 
         int index = 0;
         float max = outputs[0];
@@ -113,13 +119,23 @@ public class NeatPacmanBehavior implements Behavior {
             }
         }
 
-        Direction newDirection = switch (index) {
+        Direction newDirection = closestDirection != null ? closestDirection : switch (index) {
             case 0 -> pacman.getDirection();
             case 1 -> pacman.getDirection().left();
             case 2 -> pacman.getDirection().right();
             case 3 -> pacman.getDirection().behind();
             default -> throw new IllegalStateException("Unexpected value: " + index);
         };
+
+        if (newDirection == closestDirection) {
+            scoreModifier += 10; // Adjust the increment value as needed
+        } else {
+            scoreModifier -= 1; // Penalize for not moving towards the closest direction
+        }
+
+        if (pacman.canMove(newDirection)) {
+            pacman.move(newDirection, 1.0, true); // Adjust the double and boolean values as needed
+        }
 
         client.setScore(pacman.getMaze().getLevelManager().getScore() + scoreModifier);
         return newDirection;
