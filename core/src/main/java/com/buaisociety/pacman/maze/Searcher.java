@@ -11,17 +11,16 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 import org.jetbrains.annotations.NotNull;
+import org.joml.Vector2d;
 import org.joml.Vector2i;
 import org.joml.Vector2ic;
-import org.joml.Vector2d;
-import com.buaisociety.pacman.entity.Direction;
-import com.buaisociety.pacman.entity.FruitEntity;
 
-import com.buaisociety.pacman.entity.PacmanEntity;
+import com.buaisociety.pacman.entity.Direction;
+import com.buaisociety.pacman.entity.Entity;
+import com.buaisociety.pacman.entity.FruitEntity;
 import com.buaisociety.pacman.entity.GhostEntity;
 import com.buaisociety.pacman.entity.GhostState;
-import com.buaisociety.pacman.entity.Entity;
-import com.buaisociety.pacman.maze.Pair;
+import com.buaisociety.pacman.entity.PacmanEntity;
 
 public class Searcher {
 
@@ -64,12 +63,11 @@ public class Searcher {
 
         for (Direction direction : Direction.values()) {
             SearchResult result = findTileWithBFS(startTile, tile -> {
-                // Check if the tile matches the predicate, contains a FruitEntity, or is a tunnel
+                // Check if the tile matches the predicate or contains a FruitEntity
                 boolean matchesPredicate = predicate.test(tile);
                 boolean containsFruit = startTile.getMaze().getEntities().stream()
                     .anyMatch(entity -> entity instanceof FruitEntity && entity.getTilePosition().equals(tile.getPosition()));
-                boolean isTunnel = tile.getState() == TileState.TUNNEL; // Assuming TileState.TUNNEL exists
-                return matchesPredicate || containsFruit || isTunnel;
+                return matchesPredicate || containsFruit;
             }, direction);
 
             if (result != null) {

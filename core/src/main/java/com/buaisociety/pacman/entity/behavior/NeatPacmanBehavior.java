@@ -1,5 +1,6 @@
 package com.buaisociety.pacman.entity.behavior;
 import java.util.Map;
+import java.util.Optional;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -8,21 +9,14 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.buaisociety.pacman.entity.Direction;
 import com.buaisociety.pacman.entity.Entity;
 import com.buaisociety.pacman.entity.FruitEntity;
+import com.buaisociety.pacman.entity.GhostEntity;
+import com.buaisociety.pacman.entity.GhostState;
 import com.buaisociety.pacman.entity.PacmanEntity;
+import com.buaisociety.pacman.maze.Pair;
 import com.buaisociety.pacman.maze.Searcher;
 import com.buaisociety.pacman.maze.Tile;
 import com.buaisociety.pacman.maze.TileState;
 import com.cjcrafter.neat.Client;
-import com.buaisociety.pacman.entity.Direction;
-import com.buaisociety.pacman.entity.Entity;
-import com.buaisociety.pacman.entity.GhostEntity;
-import com.buaisociety.pacman.entity.GhostState;
-import com.buaisociety.pacman.entity.PacmanEntity;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import java.util.Map;
-import com.buaisociety.pacman.maze.Pair;
-import java.util.Optional;
 
 public class NeatPacmanBehavior implements Behavior {
 
@@ -176,7 +170,7 @@ public class NeatPacmanBehavior implements Behavior {
             }
         }
 
-        float[] inputs = new float[8]; // Adjust size based on the number of inputs
+        float[] inputs = new float[7]; // Adjust size based on the number of inputs
         inputs[0] = canMoveForward ? 1f : 0f; // Forward
         inputs[1] = canMoveLeft ? 1f : 0f;    // Left
         inputs[2] = canMoveRight ? 1f : 0f;   // Right
@@ -189,12 +183,6 @@ public class NeatPacmanBehavior implements Behavior {
         } : 0f;
         inputs[5] = fruitExists ? 1f : 0f;
         inputs[6] = closestFruitDirection != null ? switch (closestFruitDirection) {
-            case UP -> 1f;
-            case LEFT -> 2f;
-            case RIGHT -> 3f;
-            case DOWN -> 4f;
-        } : 0f;
-        inputs[7] = closestTunnelDirection != null ? switch (closestTunnelDirection) {
             case UP -> 1f;
             case LEFT -> 2f;
             case RIGHT -> 3f;
@@ -217,10 +205,8 @@ public class NeatPacmanBehavior implements Behavior {
         // Determine the new direction
         Direction newDirection;
 
-        // Prioritize tunnels if a direction to it is available
-        if (closestTunnelDirection != null) {
-            newDirection = closestTunnelDirection;
-        } else if (closestFruitDirection != null) {
+        // Always prioritize fruit if a direction to it is available
+        if (closestFruitDirection != null) {
             newDirection = closestFruitDirection;
         } else if (closestPelletDirection != null) {
             newDirection = closestPelletDirection;
@@ -234,10 +220,7 @@ public class NeatPacmanBehavior implements Behavior {
             };
         }
 
-        // Special training condition: Increase scoreModifier when moving towards tunnels
-        if (newDirection == closestTunnelDirection) {
-            scoreModifier += 15; // Increase the scoreModifier when moving towards a tunnel
-        } else if (newDirection == closestFruitDirection) {
+        if (newDirection == closestFruitDirection) {
             scoreModifier += 20;
         } else if (newDirection == closestPelletDirection) {
             scoreModifier += 10;
