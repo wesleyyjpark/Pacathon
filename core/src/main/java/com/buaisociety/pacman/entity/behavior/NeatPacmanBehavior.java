@@ -21,6 +21,12 @@ public class NeatPacmanBehavior implements Behavior {
     // specific pools of points instead of subtracting from all.
     private int scoreModifier = 0;
 
+    //my personal vars
+    private int numberUpdatesSinceLastScore = 0;
+    private int lastScore = 0;
+
+
+
     public NeatPacmanBehavior(@NotNull Client client) {
         this.client = client;
     }
@@ -39,6 +45,20 @@ public class NeatPacmanBehavior implements Behavior {
         }
 
         // SPECIAL TRAINING CONDITIONS
+        //new score is current pacman score
+        int newScore = pacman.getMaze().getLevelManager().getScore();
+        if (newScore > lastScore) {
+            lastScore = newScore;
+            numberUpdatesSinceLastScore = 0;
+        }
+
+        if (numberUpdatesSinceLastScore++ > 60 * 10){
+            pacman.kill();
+            return Direction.UP;
+        }
+
+        
+
         // TODO: Make changes here to help with your training...
         // END OF SPECIAL TRAINING CONDITIONS
 
@@ -77,8 +97,8 @@ public class NeatPacmanBehavior implements Behavior {
             case 3 -> pacman.getDirection().behind();
             default -> throw new IllegalStateException("Unexpected value: " + index);
         };
-
-        client.setScore(pacman.getMaze().getLevelManager().getScore() + scoreModifier);
+        //adding integers to scoreModifier to say pacman is doing good
+        client.setScore(pacman.getMaze().getLevelManager().getScore() + scoreModifier);  //reward function or fitness function
         return newDirection;
     }
 
