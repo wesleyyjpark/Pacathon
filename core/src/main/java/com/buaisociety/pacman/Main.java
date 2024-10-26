@@ -1,26 +1,5 @@
 package com.buaisociety.pacman;
 
-import com.badlogic.gdx.ApplicationAdapter;
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
-import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.utils.ScreenUtils;
-import com.cjcrafter.neat.Neat;
-import com.cjcrafter.neat.NeatImpl;
-import com.cjcrafter.neat.NeatPrinter;
-import com.cjcrafter.neat.NeatSaver;
-import com.cjcrafter.neat.Parameters;
-import com.buaisociety.pacman.entity.EntityType;
-import com.buaisociety.pacman.entity.PacmanEntity;
-import com.buaisociety.pacman.entity.behavior.NeatPacmanBehavior;
-import com.buaisociety.pacman.event.CreateMazeEvent;
-import com.buaisociety.pacman.event.EntityPreSpawnEvent;
-import com.buaisociety.pacman.event.GameEndEvent;
-import com.buaisociety.pacman.util.EventSystem;
-import org.jetbrains.annotations.NotNull;
-import org.joml.Vector2i;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -34,6 +13,28 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+
+import org.jetbrains.annotations.NotNull;
+import org.joml.Vector2i;
+
+import com.badlogic.gdx.ApplicationAdapter;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.utils.ScreenUtils;
+import com.buaisociety.pacman.entity.EntityType;
+import com.buaisociety.pacman.entity.PacmanEntity;
+import com.buaisociety.pacman.entity.behavior.NeatPacmanBehavior;
+import com.buaisociety.pacman.event.CreateMazeEvent;
+import com.buaisociety.pacman.event.EntityPreSpawnEvent;
+import com.buaisociety.pacman.event.GameEndEvent;
+import com.buaisociety.pacman.util.EventSystem;
+import com.cjcrafter.neat.Neat;
+import com.cjcrafter.neat.NeatImpl;
+import com.cjcrafter.neat.NeatPrinter;
+import com.cjcrafter.neat.NeatSaver;
+import com.cjcrafter.neat.Parameters;
 
 /**
  * Welcome welcome! This is the main class for the training of pacman. This
@@ -125,7 +126,7 @@ public class Main extends ApplicationAdapter {
             neatParameters.setTargetClientsPerSpecies(12);  // targeting ~12 clients per species
             neatParameters.setStagnationLimit(10);  // lower stagnation limit
             neatParameters.setUseBiasNode(true);  // use bias node
-            return new NeatImpl(5, 4, totalGames, neatParameters);
+            return new NeatImpl(8, 4, totalGames, neatParameters);
         }
     }
 

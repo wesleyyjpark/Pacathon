@@ -1,23 +1,21 @@
 package com.buaisociety.pacman.maze;
 
-import com.buaisociety.pacman.entity.Direction;
-import com.buaisociety.pacman.maze.Maze;
-import com.buaisociety.pacman.maze.Tile;
-import com.buaisociety.pacman.maze.TileState;
-import org.jetbrains.annotations.NotNull;
-import org.joml.Vector2d;
-import org.joml.Vector2i;
-import org.joml.Vector2ic;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.function.Predicate;
-import java.util.Map;
+
+import org.jetbrains.annotations.NotNull;
+import org.joml.Vector2i;
+import org.joml.Vector2ic;
+
+import com.buaisociety.pacman.entity.Direction;
+import com.buaisociety.pacman.entity.FruitEntity;
 
 import com.buaisociety.pacman.entity.PacmanEntity;
 import com.buaisociety.pacman.entity.GhostEntity;
@@ -55,7 +53,7 @@ public class Searcher {
     }
 
     /**
-     * Performs a BFS search in each of the four directions to find tiles matching the predicate.
+     * Performs a BFS search in each of the four directions to find tiles matching the predicate, containing a FruitEntity, or being a tunnel.
      *
      * @param startTile The starting tile for the BFS.
      * @param predicate The predicate to test each tile.
@@ -63,21 +61,20 @@ public class Searcher {
      */
     public static Map<Direction, SearchResult> findTileInAllDirections(@NotNull Tile startTile, @NotNull Predicate<Tile> predicate) {
         Map<Direction, SearchResult> results = new EnumMap<>(Direction.class);
-        SearchResult closestResult = null; // Track the closest result overall
 
         for (Direction direction : Direction.values()) {
-            SearchResult result = findTileWithBFS(startTile, predicate, direction);
-            if (result != null) {
-                // Update closest result if it's the first found or closer than the previous
-                if (closestResult == null || result.getDistance() < closestResult.getDistance()) {
-                    closestResult = result;
-                }
-            }
-        }
+            SearchResult result = findTileWithBFS(startTile, tile -> {
+                // Check if the tile matches the predicate, contains a FruitEntity, or is a tunnel
+                boolean matchesPredicate = predicate.test(tile);
+                boolean containsFruit = startTile.getMaze().getEntities().stream()
+                    .anyMatch(entity -> entity instanceof FruitEntity && entity.getTilePosition().equals(tile.getPosition()));
+                boolean isTunnel = tile.getState() == TileState.TUNNEL; // Assuming TileState.TUNNEL exists
+                return matchesPredicate || containsFruit || isTunnel;
+            }, direction);
 
-        // Only return the closest result if found
-        if (closestResult != null) {
-            results.put(closestResult.getDirection(), closestResult); // Use the new direction field
+            if (result != null) {
+                results.put(result.getDirection(), result);
+            }
         }
 
         return results;

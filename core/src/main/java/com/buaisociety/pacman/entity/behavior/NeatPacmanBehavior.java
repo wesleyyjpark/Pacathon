@@ -1,11 +1,17 @@
 package com.buaisociety.pacman.entity.behavior;
+import java.util.Map;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.buaisociety.pacman.entity.Direction;
+import com.buaisociety.pacman.entity.Entity;
+import com.buaisociety.pacman.entity.FruitEntity;
+import com.buaisociety.pacman.entity.PacmanEntity;
 import com.buaisociety.pacman.maze.Searcher;
 import com.buaisociety.pacman.maze.Tile;
 import com.buaisociety.pacman.maze.TileState;
-import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.buaisociety.pacman.maze.Maze;
-import com.buaisociety.pacman.sprite.DebugDrawing;
 import com.cjcrafter.neat.Client;
 import com.buaisociety.pacman.entity.Direction;
 import com.buaisociety.pacman.entity.Entity;
@@ -71,7 +77,11 @@ public class NeatPacmanBehavior implements Behavior {
         if (numberUpdatesSinceLastScore > 10 * 10){
             scoreModifier -= 1;
         }
-
+        int scoreDifference = newScore-lastScore;
+        if (scoreDifference == 100 || scoreDifference == 300 || scoreDifference == 500 || scoreDifference == 700 ||
+        scoreDifference == 1000 || scoreDifference == 2000 || scoreDifference == 3000 || scoreDifference == 5000) {
+            scoreModifier += 20;
+        }
         if (ghostNearby) {
             // If the ghost is frightened, move towards it; otherwise, move away
             Optional<GhostEntity> frightenedGhost = pacman.getMaze().getEntities().stream()
@@ -111,35 +121,85 @@ public class NeatPacmanBehavior implements Behavior {
         boolean canMoveRight = pacman.canMove(right);
         boolean canMoveBehind = pacman.canMove(behind);
 
+        // boolean if fruit exists or not
+        boolean fruitExists = false;
+        for (Entity mazeEntity : pacman.getMaze().getEntities()){
+            if (mazeEntity instanceof FruitEntity) {
+                fruitExists = true;
+            }
+        }
 
         //BFS 
         Tile currentTile = pacman.getMaze().getTile(pacman.getTilePosition());
         Map<Direction, Searcher.SearchResult> nearestPellets = Searcher.findTileInAllDirections(currentTile, tile -> tile.getState() == TileState.PELLET);
+        Map<Direction, Searcher.SearchResult> nearestFruits = Searcher.findTileInAllDirections(currentTile, tile -> 
+            pacman.getMaze().getEntities().stream()
+                .anyMatch(e -> e instanceof FruitEntity && e.getTilePosition().equals(tile.getPosition()))
+        );
 
         // Determine the direction with the closest pellet
-        Direction closestDirection = null;
-        int closestDistance = Integer.MAX_VALUE;
+        Direction closestPelletDirection = null;
+        int closestPelletDistance = Integer.MAX_VALUE;
 
         for (Map.Entry<Direction, Searcher.SearchResult> entry : nearestPellets.entrySet()) {
             Searcher.SearchResult result = entry.getValue();
-            if (result != null && result.getDistance() < closestDistance) {
-                closestDistance = result.getDistance();
-                closestDirection = entry.getKey();
+            if (result != null && result.getDistance() < closestPelletDistance) {
+                closestPelletDistance = result.getDistance();
+                closestPelletDirection = entry.getKey();
             }
         }
 
-        float[] inputs = new float[5]; // Adjust size based on the number of inputs
+        // Determine the direction with the closest fruit
+        Direction closestFruitDirection = null;
+        int closestFruitDistance = Integer.MAX_VALUE;
+
+        for (Map.Entry<Direction, Searcher.SearchResult> entry : nearestFruits.entrySet()) {
+            Searcher.SearchResult result = entry.getValue();
+            if (result != null && result.getDistance() < closestFruitDistance) {
+                closestFruitDistance = result.getDistance();
+                closestFruitDirection = entry.getKey();
+            }
+        }
+
+        // BFS to find the nearest tunnel
+        Map<Direction, Searcher.SearchResult> nearestTunnels = Searcher.findTileInAllDirections(currentTile, tile -> tile.getState() == TileState.TUNNEL);
+
+        // Determine the direction with the closest tunnel
+        Direction closestTunnelDirection = null;
+        int closestTunnelDistance = Integer.MAX_VALUE;
+
+        for (Map.Entry<Direction, Searcher.SearchResult> entry : nearestTunnels.entrySet()) {
+            Searcher.SearchResult result = entry.getValue();
+            if (result != null && result.getDistance() < closestTunnelDistance) {
+                closestTunnelDistance = result.getDistance();
+                closestTunnelDirection = entry.getKey();
+            }
+        }
+
+        float[] inputs = new float[8]; // Adjust size based on the number of inputs
         inputs[0] = canMoveForward ? 1f : 0f; // Forward
         inputs[1] = canMoveLeft ? 1f : 0f;    // Left
         inputs[2] = canMoveRight ? 1f : 0f;   // Right
         inputs[3] = canMoveBehind ? 1f : 0f;  // Behind
-        inputs[4] = closestDirection != null ? switch (closestDirection) {
-            case UP -> 1f;    // Closest direction is UP
-            case LEFT -> 2f;  // Closest direction is LEFT
-            case RIGHT -> 3f; // Closest direction is RIGHT
-            case DOWN -> 4f;  // Closest direction is DOWN
+        inputs[4] = closestPelletDirection != null ? switch (closestPelletDirection) {
+            case UP -> 1f;
+            case LEFT -> 2f;
+            case RIGHT -> 3f;
+            case DOWN -> 4f;
         } : 0f;
-        
+        inputs[5] = fruitExists ? 1f : 0f;
+        inputs[6] = closestFruitDirection != null ? switch (closestFruitDirection) {
+            case UP -> 1f;
+            case LEFT -> 2f;
+            case RIGHT -> 3f;
+            case DOWN -> 4f;
+        } : 0f;
+        inputs[7] = closestTunnelDirection != null ? switch (closestTunnelDirection) {
+            case UP -> 1f;
+            case LEFT -> 2f;
+            case RIGHT -> 3f;
+            case DOWN -> 4f;
+        } : 0f;
 
         // Use the closest direction for the output
         float[] outputs = client.getCalculator().calculate(inputs).join();
@@ -154,22 +214,39 @@ public class NeatPacmanBehavior implements Behavior {
             }
         }
 
-        newDirection = closestDirection != null ? closestDirection : switch (index) {
-            case 0 -> pacman.getDirection();
-            case 1 -> pacman.getDirection().left();
-            case 2 -> pacman.getDirection().right();
-            case 3 -> pacman.getDirection().behind();
-            default -> throw new IllegalStateException("Unexpected value: " + index);
-        };
+        // Determine the new direction
+        Direction newDirection;
 
-        if (newDirection == closestDirection) {
-            scoreModifier += 10; // Adjust the increment value as needed
+        // Prioritize tunnels if a direction to it is available
+        if (closestTunnelDirection != null) {
+            newDirection = closestTunnelDirection;
+        } else if (closestFruitDirection != null) {
+            newDirection = closestFruitDirection;
+        } else if (closestPelletDirection != null) {
+            newDirection = closestPelletDirection;
         } else {
-            scoreModifier -= 1; // Penalize for not moving towards the closest direction
+            newDirection = switch (index) {
+                case 0 -> pacman.getDirection();
+                case 1 -> pacman.getDirection().left();
+                case 2 -> pacman.getDirection().right();
+                case 3 -> pacman.getDirection().behind();
+                default -> throw new IllegalStateException("Unexpected value: " + index);
+            };
+        }
+
+        // Special training condition: Increase scoreModifier when moving towards tunnels
+        if (newDirection == closestTunnelDirection) {
+            scoreModifier += 15; // Increase the scoreModifier when moving towards a tunnel
+        } else if (newDirection == closestFruitDirection) {
+            scoreModifier += 20;
+        } else if (newDirection == closestPelletDirection) {
+            scoreModifier += 10;
+        } else {
+            scoreModifier -= 1;
         }
 
         if (pacman.canMove(newDirection)) {
-            pacman.move(newDirection, 1.0, true); // Adjust the double and boolean values as needed
+            pacman.move(newDirection, 1.0, true);
         }
 
         client.setScore(pacman.getMaze().getLevelManager().getScore() + scoreModifier);
@@ -201,3 +278,4 @@ public class NeatPacmanBehavior implements Behavior {
          */
     }
 }
+
