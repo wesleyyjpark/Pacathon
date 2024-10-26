@@ -1,5 +1,7 @@
 package com.buaisociety.pacman.entity.behavior;
-
+import com.buaisociety.pacman.maze.Searcher;
+import com.buaisociety.pacman.maze.Tile;
+import com.buaisociety.pacman.maze.TileState;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.buaisociety.pacman.maze.Maze;
@@ -10,6 +12,7 @@ import com.buaisociety.pacman.entity.Entity;
 import com.buaisociety.pacman.entity.PacmanEntity;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import java.util.Map;
 
 public class NeatPacmanBehavior implements Behavior {
 
@@ -20,11 +23,8 @@ public class NeatPacmanBehavior implements Behavior {
     // This is great for training, because we can take away points from
     // specific pools of points instead of subtracting from all.
     private int scoreModifier = 0;
-
-    //my personal vars
-    private int numberUpdatesSinceLastScore = 0;
-    private int lastScore = 0;
-
+    private int lastScore = 0; // Add this line to declare lastScore
+    private int numberUpdatesSinceLastScore = 0; // Add this line to declare numberUpdatesSinceLastScore
 
 
     public NeatPacmanBehavior(@NotNull Client client) {
@@ -45,7 +45,6 @@ public class NeatPacmanBehavior implements Behavior {
         }
 
         // SPECIAL TRAINING CONDITIONS
-        //new score is current pacman score
         int newScore = pacman.getMaze().getLevelManager().getScore();
         if (newScore > lastScore) {
             lastScore = newScore;
@@ -56,8 +55,6 @@ public class NeatPacmanBehavior implements Behavior {
             pacman.kill();
             return Direction.UP;
         }
-
-        
 
         // TODO: Make changes here to help with your training...
         // END OF SPECIAL TRAINING CONDITIONS
@@ -74,11 +71,37 @@ public class NeatPacmanBehavior implements Behavior {
         boolean canMoveRight = pacman.canMove(right);
         boolean canMoveBehind = pacman.canMove(behind);
 
+        
+
+        
+
+       
+
+        //BFS 
+        Tile currentTile = pacman.getMaze().getTile(pacman.getTilePosition());
+        Map<Direction, Searcher.SearchResult> nearestPellets = Searcher.findTileInAllDirections(currentTile, tile -> tile.getState() == TileState.PELLET);
+
+        int maxDistance = -1;
+        for (Searcher.SearchResult result : nearestPellets.values()) {
+            if (result != null) {
+                maxDistance = Math.max(maxDistance, result.getDistance());
+            }
+        }
+
+        float nearestPelletForward = nearestPellets.get(forward) != null ? 1 - (float) nearestPellets.get(forward).getDistance() / maxDistance : 0;
+        float nearestPelletLeft = nearestPellets.get(left) != null ? 1 - (float) nearestPellets.get(left).getDistance() / maxDistance : 0;
+        float nearestPelletRight = nearestPellets.get(right) != null ? 1 - (float) nearestPellets.get(right).getDistance() / maxDistance : 0;
+        float nearestPelletBehind = nearestPellets.get(behind) != null ? 1 - (float) nearestPellets.get(behind).getDistance() / maxDistance : 0;
+
         float[] outputs = client.getCalculator().calculate(new float[]{
             canMoveForward ? 1f : 0f,
             canMoveLeft ? 1f : 0f,
             canMoveRight ? 1f : 0f,
             canMoveBehind ? 1f : 0f,
+            nearestPelletForward,
+            nearestPelletLeft,
+            nearestPelletRight,
+            nearestPelletBehind
         }).join();
 
         int index = 0;
@@ -97,9 +120,23 @@ public class NeatPacmanBehavior implements Behavior {
             case 3 -> pacman.getDirection().behind();
             default -> throw new IllegalStateException("Unexpected value: " + index);
         };
-        //adding integers to scoreModifier to say pacman is doing good
-        client.setScore(pacman.getMaze().getLevelManager().getScore() + scoreModifier);  //reward function or fitness function
+
+        client.setScore(pacman.getMaze().getLevelManager().getScore() + scoreModifier);
         return newDirection;
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
     }
 
     @Override
